@@ -1,7 +1,62 @@
 import subprocess
 import re
+import os
 
 from langchain.agents import tool
+
+@tool
+def read_file(filepath):
+    """
+    Read the content of a file. Input: path to the file.
+    """
+    try:
+        with open(filepath.strip(), 'r') as f:
+            return f.read()
+    except Exception as e:
+        return str(e)
+
+@tool
+def write_file(input_str):
+    """
+    Write content to a file. Input format: "filepath|content"
+    """
+    try:
+        parts = input_str.split("|", 1)
+        if len(parts) != 2:
+            return "Error: input should be 'filepath|content'"
+        filepath, content = parts
+        with open(filepath.strip(), 'w') as f:
+            f.write(content)
+        return f"File {filepath} written successfully."
+    except Exception as e:
+        return str(e)
+
+@tool
+def list_directory(path):
+    """
+    List files in a directory. Input: directory path (defaults to '.' if empty).
+    """
+    try:
+        p = path.strip()
+        if not p:
+            p = "."
+        return "\n".join(os.listdir(p))
+    except Exception as e:
+        return str(e)
+
+@tool
+def run_shell_command(command):
+    """
+    Run a shell command on the computer. Input: the command to run.
+    """
+    try:
+        p = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = p.communicate()
+        if p.returncode != 0:
+            return stderr.decode("utf-8")
+        return stdout.decode("utf-8")
+    except Exception as e:
+        return str(e)
 
 @tool
 def computer_applescript_action(apple_script):
@@ -127,16 +182,19 @@ def run_javascript(javascript):
     return run_applescript(script)
 
 def run_applescript(applescript):
-    p = subprocess.Popen(['osascript', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    try:
+        p = subprocess.Popen(['osascript', '-'], stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
 
-    stdout, stderr = p.communicate(applescript.encode('utf-8'))
+        stdout, stderr = p.communicate(applescript.encode('utf-8'))
 
-    if p.returncode != 0:
-        raise Exception(stderr)
+        if p.returncode != 0:
+            return f"Error: {stderr.decode('utf-8')}"
 
-    decoded_text = stdout.decode("utf-8")
+        decoded_text = stdout.decode("utf-8")
 
-    return decoded_text
+        return decoded_text
+    except Exception as e:
+        return str(e)
 
 
 def say_text(text):

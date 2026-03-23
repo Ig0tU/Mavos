@@ -13,9 +13,10 @@ import whisper
 from PyQt6.QtCore import (Qt)
 from PyQt6.QtGui import QIcon, QPixmap, QPainter, QColor
 from PyQt6.QtWidgets import (QApplication, QMainWindow, QPushButton, QWidget, QSizePolicy,
-                             QVBoxLayout, QLabel)
+                             QVBoxLayout, QLabel, QComboBox)
 
 import main
+import models
 
 
 def get_asset_path(path: str):
@@ -43,12 +44,16 @@ class MainWindow(QMainWindow):
 
         self.setWindowFlags(Qt.WindowType.WindowStaysOnTopHint)
 
-        self.setFixedSize(275, 90)
+        self.setFixedSize(275, 140)
         self.setWindowTitle("GPT Automator")
 
         widget = QWidget(parent=self)
 
         layout = QVBoxLayout()
+
+        self.model_selector = QComboBox(parent=self)
+        self.populate_models()
+        layout.addWidget(self.model_selector)
 
         self.record_icon = self.load_icon(RECORD_ICON_PATH)
         self.stop_icon = self.load_icon(STOP_ICON_PATH)
@@ -69,6 +74,11 @@ class MainWindow(QMainWindow):
         widget.setLayout(layout)
         self.setCentralWidget(widget)
 
+    def populate_models(self):
+        self.detected_models = models.get_all_models()
+        for model in self.detected_models:
+            self.model_selector.addItem(f"{model['provider']}: {model['name']}", model)
+
     def transcribe_recording(self):
         model = whisper.load_model("base")
         result = model.transcribe(audio=self.temp_file_path, language="en", task="transcribe")
@@ -83,7 +93,12 @@ class MainWindow(QMainWindow):
 
             try:
                 # Run command execution
-                main.main(result["text"])
+                selected_model_data = self.model_selector.currentData()
+                main.main(
+                    result["text"],
+                    model_name=selected_model_data['name'],
+                    provider=selected_model_data['provider']
+                )
             except Exception as e:
                 print(f'Error executing command: {e}')
                 self.transcription_label.setText(f'An error occurred: {str(e)}')
